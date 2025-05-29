@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { Navigate, Link } from 'react-router-dom';
+import { auth, db } from '../../firebase/config';
 
 class Registro extends Component {
   constructor(props) {
@@ -8,6 +9,7 @@ class Registro extends Component {
       email: '',
       password: '',
       registrado: false,
+      error: ''
     };
   }
 
@@ -17,9 +19,22 @@ class Registro extends Component {
 
   enviarFormularioRegistro = (evento) => {
     evento.preventDefault();
-    console.log('Email:', this.state.email);
-    console.log('Contraseña:', this.state.password);
-    this.setState({ registrado: true });
+    const { email, password } = this.state;
+
+    console.log('Email:', email);
+    console.log('Contraseña:', password);
+
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(() => {
+        db.collection('users').add({
+          email: email,
+          password: password
+        });
+        this.setState({ registrado: true });
+      })
+      .catch((error) => {
+        console.log('Error al registrar:', error.message);
+      });
   };
 
   render() {
@@ -45,7 +60,7 @@ class Registro extends Component {
           /><br /><br />
           <button type="submit">Registrarse</button>
         </form>
-        <p>¿Ya tenés cuenta? <Link to="/login">Ir a login</Link></p>
+        <p>¿Ya tenés cuenta? <Link to="/">Ir a login</Link></p>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
-import { Navigate } from 'react-router-dom';
-
+import { Navigate, Link } from 'react-router-dom';
+import { auth } from '../../firebase/config';
 
 class Login extends Component {
     constructor(props) {
@@ -15,35 +15,47 @@ class Login extends Component {
 
     enviarFormularioLogin(event) {
         event.preventDefault();
-        console.log("Email:", this.state.email);
-        console.log("Password:", this.state.password);
-        this.setState({ redirigir: true });
 
+        const { email, password } = this.state;
+
+        auth.signInWithEmailAndPassword(email, password)
+            .then(() => {
+                this.setState({ redirigir: true });
+            })
+            .catch((error) => {
+                console.log("Error de login:", error.message);
+                alert("Email o contraseña incorrectos");
+            });
     }
 
     render() {
         if (this.state.redirigir) {
             return <Navigate to="/home" />;
         }
-        return (
-            <form onSubmit={this.enviarFormularioLogin}>
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={this.state.email}
-                    onChange={(e) => this.setState({ email: e.target.value })}
-                    required
-                />
-                <input
-                    type="password"
-                    placeholder="Contraseña"
-                    value={this.state.password}
-                    onChange={(e) => this.setState({ password: e.target.value })}
-                    required
-                />
-                <button type="submit">Enviar</button>
-            </form>
 
+        return (
+            <div style={{ padding: 20 }}>
+                <form onSubmit={this.enviarFormularioLogin}>
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        value={this.state.email}
+                        onChange={(e) => this.setState({ email: e.target.value })}
+                        required
+                    />
+                    <input
+                        type="password"
+                        placeholder="Contraseña"
+                        value={this.state.password}
+                        onChange={(e) => this.setState({ password: e.target.value })}
+                        required
+                    />
+                    <button type="submit">Enviar</button>
+                </form>
+                <p>
+                    ¿No tenés cuenta? <Link to="/registro">Registrate acá</Link>
+                </p>
+            </div>
         );
     }
 }
