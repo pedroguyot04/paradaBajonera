@@ -21,7 +21,7 @@ class Logout extends Component {
   }
 
   render() {
-    if (this.state.salir) return <Navigate to="/login" />;
+    if (this.state.salir) return <Navigate to="/" />;
     return (
       <div style={{ padding: 20 }}>
         <h2>¿Querés cerrar sesión?</h2>
