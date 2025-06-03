@@ -346,7 +346,7 @@ class Home extends React.Component {
                 }
               }}
             >
-              Gastos del día {fecha} registrados == Reiniciar Caja
+              Gastos del día {fecha} registrados - Reiniciar Caja
             </button>
           </>
         )}
