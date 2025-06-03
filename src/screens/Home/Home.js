@@ -53,6 +53,8 @@ class Home extends React.Component {
               this.setState({ rol }, () => {
                 this.iniciarListenerResumenes(email, this.state.fecha);
               });
+            } else {
+              this.setState({ error: 'Usuario sin rol asignado', cargando: false });
             }
           })
           .catch((error) =>
