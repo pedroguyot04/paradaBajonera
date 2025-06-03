@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Navigate } from 'react-router-dom';
 import { auth } from '../../firebase/config';
+import './Logout.css';
 
 class Logout extends Component {
   constructor(props) {
@@ -23,9 +24,9 @@ class Logout extends Component {
   render() {
     if (this.state.salir) return <Navigate to="/" />;
     return (
-      <div style={{ padding: 20 }}>
-        <h2>¿Querés cerrar sesión?</h2>
-        <button onClick={this.cerrarSesion}>Cerrar sesión</button>
+      <div className="logout-container" style={{ padding: 20 }}>
+        <h2 className="logout-title">¿Querés cerrar sesión?</h2>
+        <button className="logout-boton" onClick={this.cerrarSesion}>Cerrar sesión</button>
       </div>
     );
   }

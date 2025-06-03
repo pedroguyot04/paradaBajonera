@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { auth, db } from '../../firebase/config';
 
 import ResumenTurno from '../../components/Ventas/ResumenTurno/ResumenTurno';
 import TablaVentas from '../../components/Ventas/TablaVentas/TablaVentas';
+import ResumenDiario from '../../components/Ventas/ResumenDiario/ResumenDiario';
 
 import './Home.css';
 
@@ -17,12 +17,15 @@ class Home extends React.Component {
       fecha: this.obtenerFechaHoy(),
       turnoSeleccionado: '',
       resumenTurnos: {
-        manana: this.estadoInicialTurno(),
+        mañana: this.estadoInicialTurno(),
         tarde: this.estadoInicialTurno()
       },
       cargando: true,
-      error: ''
+      error: '',
+      hayCambios: false,
     };
+
+    this.unsubscribeResumenes = null; // para guardar el listener y limpiar luego
   }
 
   estadoInicialTurno = () => ({
@@ -47,9 +50,9 @@ class Home extends React.Component {
           .then((snap) => {
             if (!snap.empty) {
               const rol = snap.docs[0].data().rol;
-              this.setState({ rol }, () =>
-                this.cargarResumenTurnos(email, this.state.fecha)
-              );
+              this.setState({ rol }, () => {
+                this.iniciarListenerResumenes(email, this.state.fecha);
+              });
             }
           })
           .catch((error) =>
@@ -57,50 +60,123 @@ class Home extends React.Component {
           );
       }
     });
+    window.addEventListener('beforeunload', this.manejarAntesDeSalir);
+  }
+
+  componentWillUnmount() {
+    if (this.unsubscribeResumenes) {
+      this.unsubscribeResumenes(); // Desuscribirse al desmontar el componente
+    }
+    window.removeEventListener('beforeunload', this.manejarAntesDeSalir);
   }
 
   obtenerFechaHoy() {
     return new Date().toISOString().split('T')[0];
   }
 
-  renderResumenTurno = (turno) => {
-    return <ResumenTurno datos={this.state.resumenTurnos[turno]} turno={turno} />;
-  }
+  manejarAntesDeSalir = (e) => {
+    if (this.state.hayCambios) {
+      e.preventDefault();
+      e.returnValue = '';  // Esto hace que el navegador muestre el warning estándar
+    }
+  };
 
-  cargarResumenTurnos = (email, fecha) => {
-    const turnos = ['manana', 'tarde'];
-    const resumenTurnos = { ...this.state.resumenTurnos };
+  iniciarListenerResumenes = (email, fecha) => {
+    if (this.unsubscribeResumenes) {
+      this.unsubscribeResumenes();
+    }
 
-    Promise.all(
-      turnos.map(turno =>
-        db.collection('resumenes')
-          .doc(`${email}_${fecha}_${turno}`)
-          .get()
-          .then(doc => {
-            if (doc.exists) {
-              const data = doc.data();
-              resumenTurnos[turno] = {
-                ...this.estadoInicialTurno(),
-                aperturaCaja: data.aperturaCaja || '',
-                empleado: data.empleado || '',
-                ventas: data.ventas || []
-              };
-              this.actualizarTotalesTurno(turno, resumenTurnos[turno].ventas);
+    const turnos = ['mañana', 'tarde'];
+
+    if (this.state.rol.toLowerCase() === 'toto') {
+      // Para toto: traer todos los resumenes del día para cada turno, y consolidar
+      this.unsubscribeResumenes = db.collection('resumenes')
+        .where('fecha', '==', fecha)
+        .onSnapshot(snapshot => {
+          const resumenesPorTurno = {
+            mañana: this.estadoInicialTurno(),
+            tarde: this.estadoInicialTurno(),
+          };
+
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const turno = data.turno;
+
+            if (!turnos.includes(turno)) return;
+
+            const ventas = data.ventas || [];
+
+            resumenesPorTurno[turno].ventas = resumenesPorTurno[turno].ventas.concat(ventas);
+            resumenesPorTurno[turno].aperturaCaja = resumenesPorTurno[turno].aperturaCaja || data.aperturaCaja || '';
+            if (!resumenesPorTurno[turno].empleado.includes(data.empleado)) {
+              resumenesPorTurno[turno].empleado += (resumenesPorTurno[turno].empleado ? ' / ' : '') + (data.empleado || '');
             }
-          })
-      )
-    )
-      .then(() => this.setState({ resumenTurnos, cargando: false }))
-      .catch(error =>
-        this.setState({ error: 'Error cargando resumenes: ' + error.message, cargando: false })
-      );
+
+
+            // Sumar totales
+            ventas.forEach(v => {
+              resumenesPorTurno[turno].totalEfectivo += Number(v.efectivo) || 0;
+              resumenesPorTurno[turno].totalPosnet += Number(v.posnet) || 0;
+              resumenesPorTurno[turno].totalMercadoPago += Number(v.mercadoPago) || 0;
+            });
+          });
+
+          // Calcular total general
+          Object.keys(resumenesPorTurno).forEach(turno => {
+            const r = resumenesPorTurno[turno];
+            r.totalGeneral = r.totalEfectivo + r.totalPosnet + r.totalMercadoPago;
+          });
+
+          this.setState({ resumenTurnos: resumenesPorTurno, cargando: false });
+        }, error => {
+          this.setState({ error: 'Error en snapshot: ' + error.message, cargando: false });
+        });
+
+    } else {
+      // Para otros usuarios, cargar solo su resumen por turno como antes
+      const listeners = turnos.map(turno => {
+        const docRef = db.collection('resumenes').doc(`${email}_${fecha}_${turno}`);
+        return docRef.onSnapshot(doc => {
+          const resumenTurnos = { ...this.state.resumenTurnos };
+          if (doc.exists) {
+            const data = doc.data();
+            const ventas = data.ventas || [];
+            let totalEfectivo = 0, totalPosnet = 0, totalMercadoPago = 0;
+            ventas.forEach(v => {
+              totalEfectivo += Number(v.efectivo) || 0;
+              totalPosnet += Number(v.posnet) || 0;
+              totalMercadoPago += Number(v.mercadoPago) || 0;
+            });
+            const totalGeneral = totalEfectivo + totalPosnet + totalMercadoPago;
+
+            resumenTurnos[turno] = {
+              aperturaCaja: data.aperturaCaja || '',
+              empleado: data.empleado || '',
+              ventas,
+              totalEfectivo,
+              totalPosnet,
+              totalMercadoPago,
+              totalGeneral
+            };
+          } else {
+            resumenTurnos[turno] = this.estadoInicialTurno();
+          }
+          this.setState({ resumenTurnos, cargando: false });
+        }, error => {
+          this.setState({ error: 'Error en snapshot: ' + error.message, cargando: false });
+        });
+      });
+
+      // Guardar listeners para desuscribir
+      this.unsubscribeResumenes = () => listeners.forEach(unsub => unsub());
+    }
   };
 
   actualizarTotalesTurno = (turno, ventas) => {
     let totalEfectivo = 0, totalPosnet = 0, totalMercadoPago = 0;
     ventas.forEach(v => {
       totalEfectivo += Number(v.efectivo) || 0;
-      totalPosnet += Number(v.Posnet) || 0;
+      totalPosnet += Number(v.posnet) || 0;
       totalMercadoPago += Number(v.mercadoPago) || 0;
     });
     const totalGeneral = totalEfectivo + totalPosnet + totalMercadoPago;
@@ -123,7 +199,7 @@ class Home extends React.Component {
     this.setState(prev => {
       const resumenTurnos = { ...prev.resumenTurnos };
       resumenTurnos[turno][campo] = valor;
-      return { resumenTurnos };
+      return { resumenTurnos, hayCambios: true };
     });
   };
 
@@ -133,40 +209,113 @@ class Home extends React.Component {
       const ventas = [...resumenTurnos[turno].ventas];
       ventas[index] = { ...ventas[index], [campo]: campo === 'pedido' ? valor : Number(valor) || 0 };
       resumenTurnos[turno].ventas = ventas;
-      return { resumenTurnos };
+      return { resumenTurnos, hayCambios: true };
     }, () => this.actualizarTotalesTurno(turno, this.state.resumenTurnos[turno].ventas));
+
   };
 
   agregarVenta = (turno) => {
     this.setState(prev => {
       const resumenTurnos = { ...prev.resumenTurnos };
-      resumenTurnos[turno].ventas.push({ pedido: '', efectivo: 0, Posnet: 0, mercadoPago: 0 });
-      return { resumenTurnos };
+      resumenTurnos[turno].ventas.push({ pedido: '', efectivo: 0, posnet: 0, mercadoPago: 0 });
+      return { resumenTurnos, hayCambios: true };
     });
+
   };
 
   eliminarVenta = (turno, index) => {
     this.setState(prev => {
       const resumenTurnos = { ...prev.resumenTurnos };
       resumenTurnos[turno].ventas.splice(index, 1);
-      return { resumenTurnos };
+      return { resumenTurnos, hayCambios: true };
     }, () => this.actualizarTotalesTurno(turno, this.state.resumenTurnos[turno].ventas));
+
   };
 
   guardarResumen = () => {
     const { email, fecha, turnoSeleccionado, resumenTurnos } = this.state;
     const datos = resumenTurnos[turnoSeleccionado];
 
+    if (!turnoSeleccionado) {
+      alert('Selecciona un turno antes de guardar.');
+      return;
+    }
+
     db.collection('resumenes')
       .doc(`${email}_${fecha}_${turnoSeleccionado}`)
       .set({
         aperturaCaja: datos.aperturaCaja,
         empleado: datos.empleado,
-        ventas: datos.ventas
+        ventas: datos.ventas,
+        turno: turnoSeleccionado,
+        fecha: fecha
       })
-      .then(() => alert('Resumen guardado con éxito.'))
+
+      .then(() => {
+        alert('Resumen guardado con éxito.');
+        this.setState({ hayCambios: false });
+      })
+
       .catch(error => alert('Error al guardar: ' + error.message));
   };
+
+  reiniciarCaja = () => {
+    const { email, fecha, rol } = this.state;
+    const turnos = ['mañana', 'tarde'];
+
+    if (rol.toLowerCase() === 'toto') {
+      db.collection('resumenes')
+        .where('fecha', '==', fecha)
+        .get()
+        .then(snapshot => {
+          const batch = db.batch();
+          snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          return batch.commit();
+        })
+        .then(() => {
+          this.avanzarFechaYLimpiar();
+        })
+        .catch(error => {
+          console.error('Error eliminando resumenes de Toto:', error);
+        });
+    } else {
+      Promise.all(
+        turnos.map(turno =>
+          db.collection('resumenes')
+            .doc(`${email}_${fecha}_${turno}`)
+            .delete()
+            .catch(error => {
+              console.error('Error eliminando resumen:', error);
+            })
+        )
+      ).then(() => {
+        this.avanzarFechaYLimpiar();
+      });
+    }
+  };
+
+  avanzarFechaYLimpiar = () => {
+    const fechaActual = new Date(this.state.fecha);
+    fechaActual.setDate(fechaActual.getDate() + 1);
+    const fechaSiguiente = fechaActual.toISOString().split('T')[0];
+
+    this.setState({
+      fecha: fechaSiguiente,
+      resumenTurnos: {
+        mañana: this.estadoInicialTurno(),
+        tarde: this.estadoInicialTurno()
+      },
+      turnoSeleccionado: '',
+    });
+    alert('Caja reiniciada y datos del día anterior eliminados.');
+  };
+
+
+  renderResumenTurno = (turno) => {
+    return <ResumenTurno datos={this.state.resumenTurnos[turno]} turno={turno} />;
+  }
 
   render() {
     const { email, rol, fecha, turnoSeleccionado, cargando, error, resumenTurnos } = this.state;
@@ -184,25 +333,14 @@ class Home extends React.Component {
         {rol.toLowerCase() === 'toto' && (
           <>
             <h2>Resumen turnos</h2>
-            {this.renderResumenTurno('manana')}
+            {this.renderResumenTurno('mañana')}
             {this.renderResumenTurno('tarde')}
 
             <button
               className="home-reiniciar-boton"
               onClick={() => {
                 if (window.confirm(`Caja cerrada y gastos del día ${fecha} registrados. ¿Reiniciar caja para el día siguiente?`)) {
-                  const fechaActual = new Date(fecha);
-                  fechaActual.setDate(fechaActual.getDate() + 1);
-                  const fechaSiguiente = fechaActual.toISOString().split('T')[0];
-
-                  this.setState({
-                    fecha: fechaSiguiente,
-                    resumenTurnos: {
-                      manana: this.estadoInicialTurno(),
-                      tarde: this.estadoInicialTurno()
-                    },
-                    turnoSeleccionado: '',
-                  });
+                  this.reiniciarCaja();
                 }
               }}
             >
@@ -220,14 +358,14 @@ class Home extends React.Component {
             className="home-turno-select"
           >
             <option value="">-</option>
-            <option value="manana">Mañana</option>
+            <option value="mañana">Mañana</option>
             <option value="tarde">Tarde</option>
           </select>
         </label>
 
         {turnoSeleccionado && (
           <TablaVentas
-            datos={resumenTurnos[turnoSeleccionado]}
+            datos={resumenTurnos[turnoSeleccionado] || this.estadoInicialTurno()}
             turno={turnoSeleccionado}
             manejarCambioArriba={this.manejarCambioArriba}
             manejarCambioVenta={this.manejarCambioVenta}
@@ -237,10 +375,14 @@ class Home extends React.Component {
           />
         )}
 
+        {rol.toLowerCase() === 'toto' && (
+          <ResumenDiario datosManana={resumenTurnos.mañana} datosTarde={resumenTurnos.tarde} />
+        )}
         <Link className="home-logout-link" to="/logout">Cerrar sesión</Link>
       </div>
     );
   }
+
 }
 
 export default Home;
