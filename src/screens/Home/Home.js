@@ -1,10 +1,12 @@
-// src/screens/Home/Home.js
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { auth, db } from '../../firebase/config';
 
-import ResumenTurno from '../../components/Ventas/ResumenTurno';
-import TablaVentas from '../../components/Ventas/TablaVentas';
+import ResumenTurno from '../../components/Ventas/ResumenTurno/ResumenTurno';
+import TablaVentas from '../../components/Ventas/TablaVentas/TablaVentas';
+
+import './Home.css';
 
 class Home extends React.Component {
   constructor(props) {
@@ -64,7 +66,6 @@ class Home extends React.Component {
   renderResumenTurno = (turno) => {
     return <ResumenTurno datos={this.state.resumenTurnos[turno]} turno={turno} />;
   }
-
 
   cargarResumenTurnos = (email, fecha) => {
     const turnos = ['manana', 'tarde'];
@@ -170,17 +171,15 @@ class Home extends React.Component {
   render() {
     const { email, rol, fecha, turnoSeleccionado, cargando, error, resumenTurnos } = this.state;
 
-    if (cargando) return <p>Cargando...</p>;
-    if (error) return <p style={{ color: 'red' }}>{error}</p>;
+    if (cargando) return <p className="home-loading">Cargando...</p>;
+    if (error) return <p className="home-error">{error}</p>;
 
     return (
-      <div style={{ maxWidth: 900, margin: 'auto', padding: 20 }}>
+      <div className="home-container">
         <h1>Bienvenido</h1>
-        <p>Email: {email}</p>
-        <p>Rol: {rol}</p>
-        <p>Fecha: {fecha}</p>
-
-        // Solo agrega esto dentro del render(), justo donde está el condicional de rol 'toto':
+        <p><strong>Email:</strong> {email}</p>
+        <p><strong>Rol:</strong> {rol}</p>
+        <p><strong>Fecha:</strong> {fecha}</p>
 
         {rol.toLowerCase() === 'toto' && (
           <>
@@ -189,10 +188,9 @@ class Home extends React.Component {
             {this.renderResumenTurno('tarde')}
 
             <button
-              style={{ marginTop: 20, backgroundColor: '#d9534f', color: 'white', padding: '10px 15px', border: 'none', cursor: 'pointer' }}
+              className="home-reiniciar-boton"
               onClick={() => {
                 if (window.confirm(`Caja cerrada y gastos del día ${fecha} registrados. ¿Reiniciar caja para el día siguiente?`)) {
-                  // Calcular fecha siguiente
                   const fechaActual = new Date(fecha);
                   fechaActual.setDate(fechaActual.getDate() + 1);
                   const fechaSiguiente = fechaActual.toISOString().split('T')[0];
@@ -213,11 +211,14 @@ class Home extends React.Component {
           </>
         )}
 
-
         <h2>Anotar Ventas</h2>
-        <label>
+        <label className="home-turno-label">
           Turno:
-          <select value={turnoSeleccionado} onChange={e => this.setState({ turnoSeleccionado: e.target.value })}>
+          <select
+            value={turnoSeleccionado}
+            onChange={e => this.setState({ turnoSeleccionado: e.target.value })}
+            className="home-turno-select"
+          >
             <option value="">-</option>
             <option value="manana">Mañana</option>
             <option value="tarde">Tarde</option>
@@ -236,7 +237,7 @@ class Home extends React.Component {
           />
         )}
 
-        <Link to="/logout">Cerrar sesión</Link>
+        <Link className="home-logout-link" to="/logout">Cerrar sesión</Link>
       </div>
     );
   }

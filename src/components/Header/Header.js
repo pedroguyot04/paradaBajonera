@@ -1,13 +1,17 @@
-// Header.js
 import React from 'react';
+import './Header.css';
 
 const Header = () => {
   return (
-    <header style={{ backgroundColor: '#0077cc', color: 'white', padding: '10px 20px' }}>
-      <h1>Mi Aplicación</h1>
-      <nav>
-        <a href="/home" style={{ color: 'white', marginRight: 15 }}>Inicio</a>
-      </nav>
+    <header className="header">
+      <div className="header-content">
+        <img
+          src="/logoPB.jpeg"
+          alt="Logo Parada Bajonera"
+          className="logo"
+        />
+        <h1 className="title">Parada Bajonera</h1>
+      </div>
     </header>
   );
 };

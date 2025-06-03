@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Chewy&display=swap');
+
+.header {
+  background-color: #009639;
+  color: white;
+  padding: 10px 20px;
+  font-family: 'Chewy', cursive;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  height: 50px;
+  margin-right: 10px;
+}
+
+.title {
+  font-size: 2rem;
+}

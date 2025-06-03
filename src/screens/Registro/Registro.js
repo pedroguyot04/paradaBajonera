@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { auth, db } from '../../firebase/config';
+import './Registro.css';
 
 class Registro extends Component {
   constructor(props) {
@@ -9,7 +10,7 @@ class Registro extends Component {
       nombre: '',
       email: '',
       password: '',
-      rol: 'Empleado',  // Valor por defecto
+      rol: 'Empleado',
       registrado: false,
       error: ''
     };
@@ -23,23 +24,12 @@ class Registro extends Component {
     evento.preventDefault();
     const { nombre, email, password, rol } = this.state;
 
-    console.log('Nombre:', nombre);
-    console.log('Email:', email);
-    console.log('Contraseña:', password);
-    console.log('Rol:', rol);
-
     auth.createUserWithEmailAndPassword(email, password)
       .then(() => {
-        db.collection('users').add({
-          nombre: nombre,
-          email: email,
-          password: password,
-          rol: rol
-        });
+        db.collection('users').add({ nombre, email, password, rol });
         this.setState({ registrado: true });
       })
       .catch((error) => {
-        console.log('Error al registrar:', error.message);
         this.setState({ error: error.message });
       });
   };
@@ -48,9 +38,9 @@ class Registro extends Component {
     if (this.state.registrado) return <Navigate to="/home" />;
 
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Registro</h2>
-        <form onSubmit={this.enviarFormularioRegistro}>
+      <div className="registro-container">
+        <h2 className="registro-titulo">Registro</h2>
+        <form onSubmit={this.enviarFormularioRegistro} className="registro-form">
           <input
             type="text"
             name="nombre"
@@ -58,7 +48,8 @@ class Registro extends Component {
             value={this.state.nombre}
             onChange={this.manejarCambio}
             required
-          /><br /><br />
+            className="registro-input"
+          />
           <input
             type="email"
             name="email"
@@ -66,7 +57,8 @@ class Registro extends Component {
             value={this.state.email}
             onChange={this.manejarCambio}
             required
-          /><br /><br />
+            className="registro-input"
+          />
           <input
             type="password"
             name="password"
@@ -74,23 +66,24 @@ class Registro extends Component {
             value={this.state.password}
             onChange={this.manejarCambio}
             required
-          /><br /><br />
-          <label htmlFor="rol">Seleccione su rol:</label><br />
+            className="registro-input"
+          />
+          <label htmlFor="rol" className="registro-label">Seleccione su rol:</label>
           <select
             name="rol"
             value={this.state.rol}
             onChange={this.manejarCambio}
             id="rol"
             required
+            className="registro-select"
           >
             <option value="Empleado">Empleado</option>
             <option value="Toto">Toto</option>
           </select>
-          <br /><br />
-          <button type="submit">Registrarse</button>
+          <button type="submit" className="registro-boton">Registrarse</button>
         </form>
-        {this.state.error && <p style={{ color: 'red' }}>{this.state.error}</p>}
-        <p>¿Ya tenés cuenta? <Link to="/">Ir a login</Link></p>
+        {this.state.error && <p className="registro-error">{this.state.error}</p>}
+        <p className="registro-link">¿Ya tenés cuenta? <Link to="/">Ir a login</Link></p>
       </div>
     );
   }

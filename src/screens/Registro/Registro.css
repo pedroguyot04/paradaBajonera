@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand&display=swap');
+
+.registro-container {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Quicksand', sans-serif;
+}
+
+.registro-titulo {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.registro-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.registro-input,
+.registro-select {
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.registro-label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.registro-boton {
+  padding: 12px;
+  background-color: #00b894;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.registro-boton:hover {
+  background-color: #019875;
+}
+
+.registro-error {
+  color: red;
+  margin-top: 10px;
+}
+
+.registro-link {
+  text-align: center;
+  margin-top: 20px;
+}
