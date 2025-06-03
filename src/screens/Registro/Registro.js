@@ -10,7 +10,7 @@ class Registro extends Component {
       nombre: '',
       email: '',
       password: '',
-      rol: 'Empleado',
+      rol: '',  // empieza vacío
       registrado: false,
       error: ''
     };
@@ -23,6 +23,11 @@ class Registro extends Component {
   enviarFormularioRegistro = (evento) => {
     evento.preventDefault();
     const { nombre, email, password, rol } = this.state;
+
+    if (!rol) {
+      this.setState({ error: 'Por favor, seleccione un rol' });
+      return;
+    }
 
     auth.createUserWithEmailAndPassword(email, password)
       .then(() => {
@@ -77,6 +82,7 @@ class Registro extends Component {
             required
             className="registro-select"
           >
+            <option value="">-- Seleccione rol --</option>
             <option value="Empleado">Empleado</option>
             <option value="Toto">Toto</option>
           </select>
